@@ -1,0 +1,20 @@
+{
+  "name": "lambda-pdf-thumbnail",
+  "version": "0.0.0",
+  "description": "Amazon Lambda function to make thumnail of first page of pdf.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "contributors": [
+    "David Veenstra <davidjulianveenstra@gmail.com>"
+  ],
+  "author": "Legal Things <info@legalthings.net>",
+  "license": "MIT",
+  "dependencies": {
+    "stream-to": "~2.0.0",
+    "async": "~1.4.2",
+    "util": "~0.10.3",
+    "aws-sdk": "~2.1.45"
+  }
+}
