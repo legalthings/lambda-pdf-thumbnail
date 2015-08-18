@@ -11,13 +11,15 @@ var s3 = new AWS.S3();
 /* This function converts a buffer, containing pdf data, to a png thumbnail.
  * Only the first page is used for the thumbnail.
  *
- * Callback takes
+ * Resolution sets the device resolution.
+ *
+ * Callback must have the form of function(error, outputBuffer) ...
  */
-function makePdfThumbnail(buffer, callback) {
+function makePdfThumbnail(buffer, resolution, callback) {
   var gs_process = spawn('/usr/bin/gs', ['-dQUIET', '-dPARANOIDSAFER', '-dBATCH', '-dNOPAUSE',
                                          '-dNOPROMPT', '-sDEVICE=png16m', '-dTextAlphaBits=4',
-                                         '-dGraphicsAlphaBits=4', '-r72', '-dFirstPage=1',
-                                         '-dLastPage=1', '-sOutputFile=-','-']);
+                                         '-dGraphicsAlphaBits=4', '-dDEVICEXRESOLUTION=' + resolution,
+                                         '-dFirstPage=1', '-dLastPage=1', '-sOutputFile=-','-']);
 
   gs_process.stdin.write(buffer, null, function () {
     gs_process.stdin.end();
@@ -80,7 +82,7 @@ exports.handler = function(event, context) {
 				next);
 			},
 		function transform(response, next) {
-      makePdfThumbnail(response.Body, function(err, buffer) {
+      makePdfThumbnail(response.Body, 72, function(err, buffer) {
         if (err) {
           next(err);
           return;
