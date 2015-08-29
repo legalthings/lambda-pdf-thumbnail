@@ -84,8 +84,7 @@
       }
     };
 
-    dynamodb.createTable(params, function(err) {
-      console.log('creating table err', err);
+    dynamodb.createTable(params, function() {
       var params = {
         TableName: tableName,
         Item: {
@@ -106,10 +105,10 @@
       function startDynalite(next) {
         setupDynalite(function(err, dynolite){
           dynamodb = dynolite;
-          next(err);
+          next(err, dynolite);
         });
       },
-      //createTable,
+      createTable,
       function createS3rverFolder(next) {
         fs.mkdir(s3rverFolder, function(err) {
           next(err);

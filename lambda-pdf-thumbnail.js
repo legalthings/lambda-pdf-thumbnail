@@ -1,7 +1,6 @@
 // get reference to S3 client 
 var async = require('async');
 var AWS = require('aws-sdk');
-var util = require('util');
 var path = require('path');
 var PdfThumbnailError = require('./pdf-thumbnail-error');
 var makePdfThumbnail = require('./make-pdf-thumbnail');
@@ -14,9 +13,10 @@ function LambdaPdfThumbnail(options) {
   }
 
   this.sourceHash = 'SourceBucket';
-  this.destinationHash = 'DestinationBucket'; 
+  this.destinationHash = 'DestinationBucket';
+  this.resolution = 72;
   var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
-              'destinationHash', 'tableName'];
+              'destinationHash', 'tableName', 'resolution'];
 
   if (!('outputBucketName' in options) && !('tableName' in options)) {
     throw new Error('Neither the output bucket or dynamodb table is specified');
@@ -101,6 +101,7 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
   }
 
   // Download the image from S3, transform, and upload to a different S3 bucket.
+  var resolution = this.resolution;
   async.waterfall([
     function download(next) {
       // Download the image from S3 into a buffer.
@@ -111,7 +112,7 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
         next);
       },
     function transform(response, next) {
-      makePdfThumbnail(response.Body, 72, function(err, buffer) {
+      makePdfThumbnail(response.Body, resolution, function(err, buffer) {
         if (err) {
           next(err);
           return;
@@ -135,9 +136,7 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
 LambdaPdfThumbnail.prototype.s3EventHandler = function(event, context) {
   'use strict';
   // Read options from the event.
-  //console.log('Reading options from event:\n', util.inspect(event, {depth: 5}));
   var srcBucket = event.Records[0].s3.bucket.name;
-  console.log('source-bucket', '"'+srcBucket+'"');
 
   // Object key may have spaces or unicode non-ASCII characters.
   var srcKey    = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
@@ -164,7 +163,6 @@ LambdaPdfThumbnail.prototype.s3EventHandler = function(event, context) {
 
   this._getDestinationBucketName(srcBucket, function(err, dstBucket){
     if (err) {
-      console.log('bucket name err', err);
       context.fail();
       return;
     }
