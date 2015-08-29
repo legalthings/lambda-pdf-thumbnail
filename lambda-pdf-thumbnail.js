@@ -29,7 +29,7 @@ function LambdaPdfThumbnail(options) {
     }
   }
 
-  this.s3 = this.s3 || new AWS.S3();
+  this.s3 = this.s3 || new AWS.S3({region: options.region});
   this.dynamodb = this.dynamodb || new AWS.DynamoDB({region: options.region});
 }
 
@@ -47,7 +47,6 @@ LambdaPdfThumbnail.prototype._getDestinationBucketName = function(inputBucketNam
     TableName: this.tableName,
     Key: {}
   };
-
 
   params.Key[this.sourceHash] = {'S': inputBucketName};
   var destinationHash = this.destinationHash;
@@ -140,32 +139,32 @@ LambdaPdfThumbnail.prototype.s3EventHandler = function(event, context) {
 
   // Object key may have spaces or unicode non-ASCII characters.
   var srcKey    = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
-  var dstBucket = 'legalthings-thumbnails';
   var dstKey    = path.basename(srcKey, '.pdf') + '-thumbnail.png';
-
-  function done(err) {
-    if (err) {
-      console.error(
-        'Unable to resize ' + srcBucket + '/' + srcKey +
-          ' and upload to ' + dstBucket + '/' + dstKey +
-          ' due to an error: ' + err
-      );
-      context.fail();
-    }
-    else {
-      console.log(
-        'Successfully resized ' + srcBucket + '/' + srcKey +
-          ' and uploaded to ' + dstBucket + '/' + dstKey
-      );
-      context.done();
-    }
-  }
 
   this._getDestinationBucketName(srcBucket, function(err, dstBucket){
     if (err) {
       context.fail();
       return;
     }
+
+    function done(err) {
+      if (err) {
+        console.error(
+          'Unable to resize ' + srcBucket + '/' + srcKey +
+            ' and upload to ' + dstBucket + '/' + dstKey +
+            ' due to an error: ' + err
+        );
+        context.fail();
+      }
+      else {
+        console.log(
+          'Successfully resized ' + srcBucket + '/' + srcKey +
+            ' and uploaded to ' + dstBucket + '/' + dstKey
+        );
+        context.done();
+      }
+    }
+
     this.generateThumbnail(srcBucket, srcKey, dstBucket, dstKey, done);
   }.bind(this));
 };

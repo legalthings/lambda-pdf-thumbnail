@@ -172,7 +172,8 @@
 
     it ('environment should be set up', function(done){
       setupEnvironment(function(err, s3, dynamodb) {
-        console.log(err);
+        if (err) console.log('setting up enviromnet error', err);
+
         expect(err).toBeFalsy();
         expect(s3).toBeTruthy();
         expect(dynamodb).toBeTruthy();
@@ -239,7 +240,6 @@
     });
 
     it('s3 event handler with specified dynamo database should save a thumbnail', function(done){
-      console.log('mockDynamodb mocks3', !!mockDynamodb, !!mocks3);
       var context = makeLambdaContext(mocks3, expect, done);
       expect(lptWithDyno.outputBucketName).not.toBeDefined();
       expect(lptWithDyno.tableName).toBeDefined();
