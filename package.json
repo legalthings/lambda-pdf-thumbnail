@@ -4,7 +4,7 @@
   "description": "Amazon Lambda function to make thumnail of first page of pdf.",
   "main": "index.js",
   "scripts": {
-    "test": "jasmine"
+    "test": "jshint *.js && jasmine"
   },
   "contributors": [
     "David Veenstra <davidjulianveenstra@gmail.com>"
@@ -16,5 +16,14 @@
     "async": "~1.4.2",
     "util": "~0.10.3",
     "aws-sdk": "~2.1.45"
+  },
+  "devDependencies": {
+    "node-lambda": "~0.6.1",
+    "jasmine": "~2.3.2",
+    "buffer-equal": "0.0.1",
+    "s3rver": "0.0.5",
+    "async": "~1.4.2",
+    "rimraf": "~2.4.2",
+    "dynalite": "~0.15.0"
   }
 }
