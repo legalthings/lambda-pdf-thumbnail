@@ -55,8 +55,8 @@ In addition, the region property is required to stop AWS.DyanomDB from complaini
 The following example demonstrates how to make a handler that looks for *DestinationBucket* in the table
 *TestTable* by searching with hash *SourceBucket*. 
 ```
-var lambdaPdfThumbnail = require('./lambda-pdf-thumbnail');
-var s3EventHandler = new lambdaPdfThumbnail.S3EventHandler({
+var S3EventHandler = require('./lambda-pdf-thumbnail').S3EventHandler;
+var s3EventHandler = new S3EventHandler({
   region:'eu-west-1',
   tableName: 'TestTable',
   s3: s3,
@@ -68,18 +68,26 @@ var s3EventHandler = new lambdaPdfThumbnail.S3EventHandler({
   resolution: 72
 });
 
-module.exports.handler = lambdaPdfThumbnail.s3EventHandler;
+// for some reason it needs to be wrapped into a function
+exports.handler = function(event, context){
+  'use strict';
+  s3EventHandler.handler(event, context); 
+};
 ```
 
 A fixed output bucket can also be specified.
 ```
-var lambdaPdfThumbnail = require('./lambda-pdf-thumbnail');
-var s3EventHandler = new lambdaPdfThumbnail.S3EventHandler({
+var S3EventHandler = require('./lambda-pdf-thumbnail').S3EventHandler;
+var s3EventHandler = new S3EventHandler({
   region:'eu-west-1',
   outputBucketName: 'output-bucket'
   s3: s3,
   resolution: 72
 });
 
-module.exports.handler = lambdaPdfThumbnail.s3EventHandler;
+// for some reason it needs to be wrapped into a function
+exports.handler = function(event, context){
+  'use strict';
+  s3EventHandler.handler(event, context); 
+};
 ```
