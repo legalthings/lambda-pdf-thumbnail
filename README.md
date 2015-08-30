@@ -1,7 +1,7 @@
 # PDF thumbnail lambda
 
-This contains a AWS Lambda to make a png thumbnail of the first page of a pdf, using
-Ghostscript.
+This package contains functionality to make a PNG thumbnail of the first page of
+a pdf file, using Ghostscript. There is also functionality to work with S3 and S3 events.
 
 ## Installation
 
