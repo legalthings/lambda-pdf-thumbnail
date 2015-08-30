@@ -38,7 +38,7 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
           Bucket: srcBucket,
           Key: srcKey
         },
-        next);
+      next);
       },
     function transform(response, next) {
       makePdfThumbnail(response.Body, resolution, function(err, buffer) {
@@ -65,7 +65,7 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
 
 function S3EventHandler(options) {
   'use strict';
-  options = options|| {};
+  options = options || {};
   if (!('outputBucketName' in options) && !('tableName' in options)) {
     throw new Error('Neither the output bucket or dynamodb table is specified');
   }
@@ -129,6 +129,11 @@ S3EventHandler.prototype.handler = function(event, context) {
 
   this._getDestinationBucketName(srcBucket, function(err, dstBucket){
     if (err) {
+      console.error(
+        'Unable to resize ' + srcBucket + '/' + srcKey +
+          ' and upload to ' + dstBucket + '/' + dstKey +
+          ' due to an error: ' + err
+      );
       context.fail();
       return;
     }
@@ -156,6 +161,6 @@ S3EventHandler.prototype.handler = function(event, context) {
 };
 
 module.exports = {
-  S3EventHandler:S3EventHandler,
+  S3EventHandler: S3EventHandler,
   generateThumbnail: generateThumbnail
 };

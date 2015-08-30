@@ -19,7 +19,7 @@
   var inputbuffer = fs.readFileSync('test.pdf');
   var expectedOutputBuffer = fs.readFileSync('expected.png');
 
-  var eventData = require('./event.json');
+  var eventData = require('./test-event.json');
   var tableName = 'pdf-thumbnail-bucket-mappings';
   var inputBucketName = 'input-bucket';
   var outputBucketName = 'output-bucket';

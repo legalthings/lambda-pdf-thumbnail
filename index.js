@@ -1,5 +1,5 @@
-var LambdaPdfThumbnail = require('./lambda-pdf-thumbnail');
-var lambdaPdfThumbnail = new LambdaPdfThumbnail({
+var S3EventHandler = require('./lambda-pdf-thumbnail').S3EventHandler;
+var s3EventHandler = new S3EventHandler({
   region: 'eu-west-1',
   resolution: 72,
   tableName: 'pdf-thumbnail-bucket-mapping',
@@ -7,4 +7,9 @@ var lambdaPdfThumbnail = new LambdaPdfThumbnail({
   destinationHash: 'destinationBucket'
 });
 
-module.exports.handler = lambdaPdfThumbnail.s3EventHandler;
+// for some reason it needs to be wrapped into a function
+exports.handler = function(event, context){
+  'use strict';
+  s3EventHandler.handler(event, context); 
+};
+
