@@ -80,6 +80,7 @@
       "module": false,
       "require": false,
       "moment": false,
-      "screenfull": false
+      "screenfull": false,
+      "exports": false
     }
 }
