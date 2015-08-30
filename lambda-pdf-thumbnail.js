@@ -2,7 +2,6 @@
 var async = require('async');
 var AWS = require('aws-sdk');
 var path = require('path');
-var PdfThumbnailError = require('./pdf-thumbnail-error');
 var makePdfThumbnail = require('./make-pdf-thumbnail');
 
 /* This function creates a thumbnail from a pdf.
@@ -12,22 +11,11 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
   'use strict';
 
   var error;
-  // Sanity check: validate that source and destination are different buckets.
-  if (srcBucket === dstBucket) {
-    error = new PdfThumbnailError(
-      'Destination bucket must not match source bucket.',
-      PdfThumbnailError.SAME_DST_SRC_BUCKET
-    );
-    callback(error);
-    return;
-  }
-
   // Infer the image type.
   var typeMatch = srcKey.match(/\.([^.]*)$/);
   if (!typeMatch) {
-    error = new PdfThumbnailError(
-      'unable to infer document type for key ' + srcKey,
-      PdfThumbnailError.UNKNOWN_FILE_TYPE
+    error = new Error(
+      'unable to infer document type for key ' + srcKey
     );
     callback(error);
     return;
@@ -35,9 +23,8 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
 
   var imageType = typeMatch[1];
   if (imageType !== 'pdf') {
-    error = new PdfThumbnailError(
-      'skipping non-pdf ' + srcKey,
-      PdfThumbnailError.WRONG_FILE_TYPE
+    error = new Error(
+      'skipping non-pdf ' + srcKey
     );
     callback(error);
     return;
@@ -79,8 +66,11 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
 function S3EventHandler(options) {
   'use strict';
   options = options|| {};
+  if (!('outputBucketName' in options) && !('tableName' in options)) {
+    throw new Error('Neither the output bucket or dynamodb table is specified');
+  }
   if (!('region' in options)) {
-    options.region = 'us-west-1';
+    throw new Error('region is not specified');
   }
 
   this.sourceHash = 'SourceBucket';
@@ -89,9 +79,6 @@ function S3EventHandler(options) {
   var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
               'destinationHash', 'tableName', 'resolution'];
 
-  if (!('outputBucketName' in options) && !('tableName' in options)) {
-    throw new Error('Neither the output bucket or dynamodb table is specified');
-  }
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
