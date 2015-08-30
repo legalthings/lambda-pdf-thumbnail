@@ -5,68 +5,12 @@ var path = require('path');
 var PdfThumbnailError = require('./pdf-thumbnail-error');
 var makePdfThumbnail = require('./make-pdf-thumbnail');
 
-function LambdaPdfThumbnail(options) {
-  'use strict';
-  options = options|| {};
-  if (!('region' in options)) {
-    options.region = 'us-west-1';
-  }
-
-  this.sourceHash = 'SourceBucket';
-  this.destinationHash = 'DestinationBucket';
-  this.resolution = 72;
-  var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
-              'destinationHash', 'tableName', 'resolution'];
-
-  if (!('outputBucketName' in options) && !('tableName' in options)) {
-    throw new Error('Neither the output bucket or dynamodb table is specified');
-  }
-
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    if (key in options) {
-      this[key] = options[key];
-    }
-  }
-
-  this.s3 = this.s3 || new AWS.S3({region: options.region});
-  this.dynamodb = this.dynamodb || new AWS.DynamoDB({region: options.region});
-}
-
-LambdaPdfThumbnail.prototype._getDestinationBucketName = function(inputBucketName, callback) {
-  'use strict';
-  if (this.outputBucketName) {
-    callback(null, this.outputBucketName);
-    return;
-  }
-
-  var params = {
-    AttributesToGet: [
-      this.destinationHash
-    ],
-    TableName: this.tableName,
-    Key: {}
-  };
-
-  params.Key[this.sourceHash] = {'S': inputBucketName};
-  var destinationHash = this.destinationHash;
-  this.dynamodb.getItem(params, function(err, result) {
-    if (result) {
-      callback(null, result.Item[destinationHash].S);
-    }
-    else {
-      callback(err);
-    }
-  });
-};
-
 /* This function creates a thumbnail from a pdf.
  * The source bucket and key, and destiny bucket and key must be specified of s3 must be specified.
  */
-LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, dstBucket, dstKey, callback) {
+function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey, callback) {
   'use strict';
 
-  var context = this;
   var error;
   // Sanity check: validate that source and destination are different buckets.
   if (srcBucket === dstBucket) {
@@ -100,11 +44,10 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
   }
 
   // Download the image from S3, transform, and upload to a different S3 bucket.
-  var resolution = this.resolution;
   async.waterfall([
     function download(next) {
       // Download the image from S3 into a buffer.
-      context.s3.getObject({
+      s3.getObject({
           Bucket: srcBucket,
           Key: srcKey
         },
@@ -121,7 +64,7 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
     },
     function upload(contentType, data, next) {
       // Stream the transformed image to a different S3 bucket.
-      context.s3.putObject({
+      s3.putObject({
           Bucket: dstBucket,
           Key: dstKey,
           Body: data,
@@ -130,9 +73,65 @@ LambdaPdfThumbnail.prototype.generateThumbnail = function (srcBucket, srcKey, ds
         next);
       }
   ], callback);
+}
+
+
+function S3EventHandler(options) {
+  'use strict';
+  options = options|| {};
+  if (!('region' in options)) {
+    options.region = 'us-west-1';
+  }
+
+  this.sourceHash = 'SourceBucket';
+  this.destinationHash = 'DestinationBucket';
+  this.resolution = 72;
+  var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
+              'destinationHash', 'tableName', 'resolution'];
+
+  if (!('outputBucketName' in options) && !('tableName' in options)) {
+    throw new Error('Neither the output bucket or dynamodb table is specified');
+  }
+
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (key in options) {
+      this[key] = options[key];
+    }
+  }
+
+  this.s3 = this.s3 || new AWS.S3({region: options.region});
+  this.dynamodb = this.dynamodb || new AWS.DynamoDB({region: options.region});
+}
+
+S3EventHandler.prototype._getDestinationBucketName = function(inputBucketName, callback) {
+  'use strict';
+  if (this.outputBucketName) {
+    callback(null, this.outputBucketName);
+    return;
+  }
+
+  var params = {
+    AttributesToGet: [
+      this.destinationHash
+    ],
+    TableName: this.tableName,
+    Key: {}
+  };
+
+  params.Key[this.sourceHash] = {'S': inputBucketName};
+  var destinationHash = this.destinationHash;
+  this.dynamodb.getItem(params, function(err, result) {
+    if (result) {
+      callback(null, result.Item[destinationHash].S);
+    }
+    else {
+      callback(err);
+    }
+  });
 };
 
-LambdaPdfThumbnail.prototype.s3EventHandler = function(event, context) {
+S3EventHandler.prototype.handler = function(event, context) {
   'use strict';
   // Read options from the event.
   var srcBucket = event.Records[0].s3.bucket.name;
@@ -165,8 +164,11 @@ LambdaPdfThumbnail.prototype.s3EventHandler = function(event, context) {
       }
     }
 
-    this.generateThumbnail(srcBucket, srcKey, dstBucket, dstKey, done);
+    generateThumbnail(this.s3, this.resolution, srcBucket, srcKey, dstBucket, dstKey, done);
   }.bind(this));
 };
 
-module.exports = LambdaPdfThumbnail;
+module.exports = {
+  S3EventHandler:S3EventHandler,
+  generateThumbnail: generateThumbnail
+};

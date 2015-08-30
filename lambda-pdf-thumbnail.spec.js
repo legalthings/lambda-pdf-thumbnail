@@ -2,7 +2,7 @@
   'use strict';
 
   var AWS = require('aws-sdk');
-  var LambdaPdfThumbnail = require('./lambda-pdf-thumbnail');
+  var lambdaPdfThumbnail = require('./lambda-pdf-thumbnail');
   var PdfThumbnailError = require('./pdf-thumbnail-error');
   var async = require('async');
   var bufferEqual = require('buffer-equal');
@@ -165,10 +165,10 @@
   }
 
   describe('lambda-pdf', function() {
-    var lpt;
     var mocks3;
     var mockDynamodb;
-    var lptWithDyno;
+    var s3EventHandlerWithDyno;
+    var s3EventHandler;
 
     it ('environment should be set up', function(done){
       setupEnvironment(function(err, s3, dynamodb) {
@@ -180,13 +180,13 @@
         mocks3 = s3;
         mockDynamodb = dynamodb;
 
-        lpt = new LambdaPdfThumbnail({
+        s3EventHandler = new lambdaPdfThumbnail.S3EventHandler({
           region:'eu-west-1',
           outputBucketName:'output-bucket',
           s3: mocks3
         });
 
-        lptWithDyno = new LambdaPdfThumbnail({
+        s3EventHandlerWithDyno = new lambdaPdfThumbnail.S3EventHandler({
           region:'eu-west-1',
           tableName: tableName,
           s3: mocks3,
@@ -197,29 +197,35 @@
       });
     });
 
-    it('should return PdfThumbnailError with error code 0, when the source and destination is the same', function(done) {
-      lpt.generateThumbnail(inputBucketName, 'test.pdf', inputBucketName, outputKey, function(err) {
+    it('generateThumbnail should return PdfThumbnailError with error code 0, when the source and destination is the same', function(done) {
+      lambdaPdfThumbnail.generateThumbnail(mocks3, 72, inputBucketName,
+                                           'test.pdf', inputBucketName,
+                                           outputKey, function(err) {
         expect(err.errorcode).toBe(PdfThumbnailError.SAME_DST_SRC_BUCKET);
         done();
       });
     });
 
-    it('should return PdfThumbnailError with error code 1, when the input file is of unknown type', function (done) {
-      lpt.generateThumbnail(inputBucketName, 'test', outputBucketName, outputKey, function(err) {
+    it('generateThumbnail should return PdfThumbnailError with error code 1, when the input file is of unknown type', function (done) {
+      lambdaPdfThumbnail.generateThumbnail(mocks3, 72,
+                                           inputBucketName, 'test',
+                                           outputBucketName, outputKey, function(err) {
         expect(err.errorcode).toBe(PdfThumbnailError.UNKNOWN_FILE_TYPE);
         done();
       });
     });
 
-    it('should return PdfThumbnailError with error code 2, when the input file is not of type pdf', function (done) {
-      lpt.generateThumbnail(inputBucketName, 'test.jpeg', outputBucketName, outputKey, function(err) {
+    it('generateThumbnail should return PdfThumbnailError with error code 2, when the input file is not of type pdf', function (done) {
+      lambdaPdfThumbnail.generateThumbnail(mocks3, 72, inputBucketName,
+                                           'test.jpeg', outputBucketName,
+                                           outputKey, function(err) {
         expect(err.errorcode).toBe(PdfThumbnailError.WRONG_FILE_TYPE);
         done();
       });
     });
 
-    it('should make a thumbnail and save it in a bucket', function(done) {
-      lpt.generateThumbnail(
+    it('generateThumbnail should make a thumbnail and save it in a bucket', function(done) {
+      lambdaPdfThumbnail.generateThumbnail(mocks3, 72,
         inputBucketName, inputKey,
         outputBucketName, outputKey, function(thumbnailError) {
           expect(thumbnailError).toBeFalsy();
@@ -234,16 +240,16 @@
 
     it('s3 event handler with specified output-bucket should save a thumbnail', function(done){
       var context = makeLambdaContext(mocks3, expect, done);
-      expect(lpt.outputBucketName).toBeDefined();
-      expect(lpt.tableName).not.toBeDefined();
-      lpt.s3EventHandler(eventData, context);
+      expect(s3EventHandler.outputBucketName).toBeDefined();
+      expect(s3EventHandler.tableName).not.toBeDefined();
+      s3EventHandler.handler(eventData, context);
     });
 
     it('s3 event handler with specified dynamo database should save a thumbnail', function(done){
       var context = makeLambdaContext(mocks3, expect, done);
-      expect(lptWithDyno.outputBucketName).not.toBeDefined();
-      expect(lptWithDyno.tableName).toBeDefined();
-      lptWithDyno.s3EventHandler(eventData, context);
+      expect(s3EventHandlerWithDyno.outputBucketName).not.toBeDefined();
+      expect(s3EventHandlerWithDyno.tableName).toBeDefined();
+      s3EventHandlerWithDyno.handler(eventData, context);
     });
 
     it('cleaning environment', function(done){
