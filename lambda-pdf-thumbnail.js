@@ -3,6 +3,7 @@ var async = require('async');
 var AWS = require('aws-sdk');
 var path = require('path');
 var makePdfThumbnail = require('./make-pdf-thumbnail');
+var util = require('util');
 
 /* This function creates a thumbnail from a pdf.
  * The source bucket and key, and destiny bucket and key must be specified of s3 must be specified.
@@ -32,26 +33,24 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
 
   // Download the image from S3, transform, and upload to a different S3 bucket.
   async.waterfall([
-    function download(next) {
-      // Download the image from S3 into a buffer.
-      s3.getObject({
-          Bucket: srcBucket,
-          Key: srcKey
-        },
-      next);
-      },
-    function transform(response, next) {
-      makePdfThumbnail(response.Body, resolution, function(err, buffer) {
+    function transform(next) {
+      var request = s3.getObject({
+        Bucket: srcBucket,
+        Key: srcKey
+      });
+
+      var pdfStream = request.createReadStream();
+      makePdfThumbnail.fromStream(pdfStream, resolution, function(err, thumbnailStream) {
         if (err) {
           next(err);
           return;
         }
-        next(null, 'image/png', buffer);
+        next(null, 'image/png', thumbnailStream);
       });
     },
     function upload(contentType, data, next) {
       // Stream the transformed image to a different S3 bucket.
-      s3.putObject({
+      s3.upload({
           Bucket: dstBucket,
           Key: dstKey,
           Body: data,
@@ -61,7 +60,6 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
       }
   ], callback);
 }
-
 
 function S3EventHandler(options) {
   'use strict';
@@ -132,7 +130,7 @@ S3EventHandler.prototype.handler = function(event, context) {
       console.error(
         'Unable to resize ' + srcBucket + '/' + srcKey +
           ' and upload to ' + dstBucket + '/' + dstKey +
-          ' due to an error: ' + err
+          ' due to an error: ' + util.inspect(err, {showHidden: false, depth: null})
       );
       context.fail();
       return;
@@ -143,7 +141,7 @@ S3EventHandler.prototype.handler = function(event, context) {
         console.error(
           'Unable to resize ' + srcBucket + '/' + srcKey +
             ' and upload to ' + dstBucket + '/' + dstKey +
-            ' due to an error: ' + err
+            ' due to an error: ' + util.inspect(err, {showHidden: false, depth: null})
         );
         context.fail();
       }
