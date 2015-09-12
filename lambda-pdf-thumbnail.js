@@ -73,7 +73,7 @@ function S3EventHandler(options) {
 
   this.sourceHash = 'SourceBucket';
   this.destinationHash = 'DestinationBucket';
-  this.resolution = 72;
+  this.resolution = 72 || options.resolution;
   var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
               'destinationHash', 'tableName', 'resolution'];
 
@@ -123,38 +123,63 @@ S3EventHandler.prototype.handler = function(event, context) {
 
   // Object key may have spaces or unicode non-ASCII characters.
   var srcKey    = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
-  var dstKey    = path.basename(srcKey, '.pdf') + '-thumbnail.png';
+  var s3 = this.s3;
+  var resolution = this.resolution;
 
   this._getDestinationBucketName(srcBucket, function(err, dstBucket){
     if (err) {
       console.error(
-        'Unable to resize ' + srcBucket + '/' + srcKey +
-          ' and upload to ' + dstBucket + '/' + dstKey +
+        'Unable to resize ' + srcKey + ' from ' + srcBucket +
+          ' and upload to ' + dstBucket + '/' +
           ' due to an error: ' + util.inspect(err, {showHidden: false, depth: null})
       );
       context.fail();
       return;
     }
 
-    function done(err) {
+    function done(err, keys) {
       if (err) {
         console.error(
-          'Unable to resize ' + srcBucket + '/' + srcKey +
-            ' and upload to ' + dstBucket + '/' + dstKey +
+          'Unable to resize ' + srcKey + ' from ' + srcBucket +
+            ' and upload to ' + dstBucket + '/' +
             ' due to an error: ' + util.inspect(err, {showHidden: false, depth: null})
         );
         context.fail();
       }
       else {
-        console.log(
-          'Successfully resized ' + srcBucket + '/' + srcKey +
-            ' and uploaded to ' + dstBucket + '/' + dstKey
-        );
+        for (var i = 0; i < keys.length; i++) {
+          console.log(
+            'Successfully resized ' + srcBucket + '/' + srcKey +
+              ' and uploaded to ' + dstBucket + '/' + keys[i]
+          );
+        }
         context.done();
       }
     }
 
-    generateThumbnail(this.s3, this.resolution, srcBucket, srcKey, dstBucket, dstKey, done);
+    var work = [];
+
+    function createWork(resolution, dstKey) {
+      return function(callback) {
+        generateThumbnail(s3, resolution, srcBucket, srcKey, dstBucket, dstKey, function(err){
+          callback(err, dstKey);
+        });
+      };
+    }
+
+    if (!isNaN(resolution)) {
+      work.push(createWork(resolution, path.basename(srcKey, '.pdf') + '-thumbnail.png'));
+    }
+    else if (resolution !== null && typeof resolution === 'object') {
+      for (var key in resolution) {
+        if (resolution.hasOwnProperty(key)) {
+          var dstKey = path.basename(srcKey, '.pdf') + key + '.png';
+          work.push(createWork(resolution[key], dstKey));
+        }
+      }
+    }
+
+    async.parallel(work, done);
   }.bind(this));
 };
 

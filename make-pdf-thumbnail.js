@@ -2,11 +2,13 @@
   'use strict';
   var spawn = require('child_process').spawn;
 
-  function spawnGsProcess(resolution) {
+  function spawnGsProcess(resolution, inputFilename, outputFilename) {
+    outputFilename = outputFilename || '-';
+    inputFilename = inputFilename || '-';
     return spawn('/usr/bin/gs', ['-dQUIET', '-dPARANOIDSAFER', '-dBATCH', '-dNOPAUSE',
                                  '-dNOPROMPT', '-sDEVICE=png16m', '-dTextAlphaBits=4',
-                                 '-dGraphicsAlphaBits=4', '-dDEVICEXRESOLUTION=' + resolution,
-                                 '-dFirstPage=1', '-dLastPage=1', '-sOutputFile=-','-']);
+                                 '-dGraphicsAlphaBits=4', '-r' + resolution,
+                                 '-dFirstPage=1', '-dLastPage=1', '-sOutputFile=' + outputFilename, inputFilename]);
   }
 
   /* This function converts a stream, containing pdf data, to a png thumbnail.
@@ -56,6 +58,15 @@
 
     gsProcess.stdout.on('error', function (err) {
       callback(err);
+    });
+  };
+
+  module.exports.fromFile = function fromFile(inputFilename, outputFilename, resolution, callback) {
+    var gsProcess = spawnGsProcess(resolution, inputFilename, outputFilename);
+    gsProcess.on('error', callback);
+
+    gsProcess.on('exit', function () {
+      callback(null);
     });
   };
 
