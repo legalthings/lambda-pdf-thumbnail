@@ -33,8 +33,6 @@
     expectedOutputBuffer: EXPECTED_OUTPUT_HIGH
   }];
 
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
-
   function setupS3rver(callback) {
     s3rver.setHostname('localhost')
       .setPort(10001)
@@ -142,19 +140,6 @@
     ], callback);
   }
 
-  function checkThumbnailOutput(s3, callback) {
-    s3.getObject(
-      {Bucket: OUT_PUTBUCKET_NAME, Key: OUTPUT_KEY},
-      function(downloadError, response) {
-        if (downloadError) {
-          callback(downloadError);
-          return;
-        }
-
-        callback(null, bufferEqual(response.Body, EXPECTED_OUTPUT_HIGH));
-      });
-  }
-
   function thumbnailVerifierHelper (s3, bucketname, key, expectedOutputBuffer) {
     return function (callback) {
       s3.getObject(
@@ -208,7 +193,6 @@
     };
 
   }
-
 
   describe('lambda-pdf', function() {
     var mockS3;

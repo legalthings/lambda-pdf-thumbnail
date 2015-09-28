@@ -70,4 +70,16 @@
     });
   };
 
+  module.exports.fromStreamToFile = function toFile(inputStream, outputFilename, resolution, callback) {
+    var gsProcess = spawnGsProcess(resolution, '-', outputFilename);
+    inputStream.pipe(gsProcess.stdin);
+
+    gsProcess.on('error', callback);
+
+    gsProcess.on('exit', function () {
+      callback(null, outputFilename);
+    });
+
+  };
+
 })();

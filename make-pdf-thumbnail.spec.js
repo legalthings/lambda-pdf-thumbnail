@@ -42,9 +42,17 @@
       });
     });
 
-
     it('thumbnail from file', function(done) {
       makePdfThumbnail.fromFile(inputFilename, 'test-output/output.png', 72, function(err) {
+        var outputBuffer = fs.readFileSync('test-output/output.png');
+        expect(err).toBeFalsy();
+        expect(bufferEqual(outputBuffer, expectedOutputBuffer)).toBe(true);
+        done();
+      });
+    });
+
+    it('thumbnail from stream to file', function(done) {
+      makePdfThumbnail.fromStreamToFile(pdfDataStream, 'test-output/output.png', 72, function(err, filename) {
         var outputBuffer = fs.readFileSync('test-output/output.png');
         expect(err).toBeFalsy();
         expect(bufferEqual(outputBuffer, expectedOutputBuffer)).toBe(true);

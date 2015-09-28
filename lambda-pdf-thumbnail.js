@@ -4,6 +4,8 @@ var AWS = require('aws-sdk');
 var path = require('path');
 var makePdfThumbnail = require('./make-pdf-thumbnail');
 var util = require('util');
+var tmp = require('tmp');
+var fs = require('fs');
 
 /* This function creates a thumbnail from a pdf.
  * The source bucket and key, and destiny bucket and key must be specified of s3 must be specified.
@@ -40,20 +42,28 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
       });
 
       var pdfStream = request.createReadStream();
-      makePdfThumbnail.fromStream(pdfStream, resolution, function(err, thumbnailStream) {
+      tmp.file(function(err, path){
         if (err) {
           next(err);
           return;
         }
-        next(null, 'image/png', thumbnailStream);
+
+        makePdfThumbnail.fromStreamToFile(pdfStream, path, resolution, function(pdfError, tmpfilename) {
+          if (pdfError) {
+            next(err);
+            return;
+          }
+          next(null, 'image/png', tmpfilename);
+        });
       });
     },
-    function upload(contentType, data, next) {
+    function upload(contentType, tmpfilename, next) {
       // Stream the transformed image to a different S3 bucket.
+      var tmpFileStream = fs.createReadStream(tmpfilename);
       s3.upload({
           Bucket: dstBucket,
           Key: dstKey,
-          Body: data,
+          Body: tmpFileStream,
           ContentType: contentType
         },
         next);
@@ -73,7 +83,7 @@ function S3EventHandler(options) {
 
   this.sourceHash = 'SourceBucket';
   this.destinationHash = 'DestinationBucket';
-  this.resolution = 72 || options.resolution;
+  this.resolution = 72;
   var keys = ['outputBucketName', 'dynamodb', 's3', 'sourceHash',
               'destinationHash', 'tableName', 'resolution'];
 
