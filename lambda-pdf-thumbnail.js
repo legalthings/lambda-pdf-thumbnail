@@ -181,13 +181,18 @@ S3EventHandler.prototype.handler = function(event, context) {
       };
     }
 
+    function getFileBase(srcKey) {
+      var filePath = (path.dirname(srcKey) == "." ? "" : path.dirname(srcKey) + "/");
+      return filePath + path.basename(srcKey, '.pdf');
+    }
+
     if (!isNaN(resolution)) {
-      work.push(createWork(resolution, path.basename(srcKey, '.pdf') + '-thumbnail.png'));
+      work.push(createWork(resolution, getFileBase(srcKey) + '-thumbnail.png'));
     }
     else if (resolution !== null && typeof resolution === 'object') {
       for (var key in resolution) {
         if (resolution.hasOwnProperty(key)) {
-          var dstKey = path.basename(srcKey, '.pdf') + key + '.png';
+          var dstKey = getFileBase(srcKey) + key + '.png';
           work.push(createWork(resolution[key], dstKey));
         }
       }
