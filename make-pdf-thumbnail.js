@@ -5,7 +5,11 @@
   function spawnGsProcess(resolution, inputFilename, outputFilename) {
     outputFilename = outputFilename || '-';
     inputFilename = inputFilename || '-';
-    return spawn('/usr/bin/gs', ['-dQUIET', '-dPARANOIDSAFER', '-dBATCH', '-dNOPAUSE',
+    var gs = '/usr/bin/gs';
+    if (process.platform === 'darwin') {
+      gs = '/usr/local/bin/gs';
+    }
+    return spawn(gs, ['-dQUIET', '-dPARANOIDSAFER', '-dBATCH', '-dNOPAUSE',
                                  '-dNOPROMPT', '-sDEVICE=png16m', '-dTextAlphaBits=4',
                                  '-dGraphicsAlphaBits=4', '-r' + resolution,
                                  '-dFirstPage=1', '-dLastPage=1', '-sOutputFile=' + outputFilename, inputFilename]);

@@ -16,10 +16,10 @@
   var dynaliteServer = dynalite({path: dynaliteFolder, createTableMs: 0});
   var s3rver = new S3rver();
 
-  var INPUT_BUFFER = fs.readFileSync('test.pdf');
-  var EXPECTED_OUTPUT_HIGH = fs.readFileSync('expected-high.png');
-  var EXPECTED_OUTPUT_MEDIUM = fs.readFileSync('expected-medium.png');
-  var EXPECTED_OUTPUT_SMALL = fs.readFileSync('expected-low.png');
+  var INPUT_BUFFER = fs.readFileSync('test/pdf/test.pdf');
+  var EXPECTED_OUTPUT_HIGH = fs.readFileSync('test/images/expected-high.png');
+  var EXPECTED_OUTPUT_MEDIUM = fs.readFileSync('test/images/expected-medium.png');
+  var EXPECTED_OUTPUT_SMALL = fs.readFileSync('test/images/expected-low.png');
 
   var EVENT_DATA = require('./test-event.json');
   var TABLE_NAME = 'pdf-thumbnail-bucket-mappings';

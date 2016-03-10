@@ -41,15 +41,19 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
         Key: srcKey
       });
 
-      var pdfStream = request.createReadStream();
+      try {
+        var pdfStream = request.createReadStream();
+      } catch (e) {
+        return next(e);
+      }
       tmp.file(function(err, path){
         if (err) {
           next(err);
           return;
         }
 
-        makePdfThumbnail.fromStreamToFile(pdfStream, path, resolution, function(pdfError, tmpfilename) {
-          if (pdfError) {
+        makePdfThumbnail.fromStreamToFile(pdfStream, path, resolution, function(err, tmpfilename) {
+          if (err) {
             next(err);
             return;
           }
@@ -67,7 +71,7 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
           ContentType: contentType
         },
         next);
-      }
+    }
   ], callback);
 }
 

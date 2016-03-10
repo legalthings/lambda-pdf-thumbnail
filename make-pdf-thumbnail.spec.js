@@ -4,10 +4,10 @@
       fs = require('fs'),
       bufferEqual = require('buffer-equal');
 
-  var inputFilename = 'test.pdf';
+  var inputFilename = 'test/pdf/test.pdf';
   var pdfDataStream = fs.createReadStream(inputFilename);
   var pdfBuffer = fs.readFileSync(inputFilename);
-  var expectedOutputBuffer = fs.readFileSync('expected.png');
+  var expectedOutputBuffer = fs.readFileSync('test/images/expected.png');
 
   describe('make-pdf-thumbnail', function() {
     var result;
@@ -52,7 +52,7 @@
     });
 
     it('thumbnail from stream to file', function(done) {
-      makePdfThumbnail.fromStreamToFile(pdfDataStream, 'test-output/output.png', 72, function(err, filename) {
+      makePdfThumbnail.fromStreamToFile(pdfDataStream, 'test-output/output.png', 72, function(err) {
         var outputBuffer = fs.readFileSync('test-output/output.png');
         expect(err).toBeFalsy();
         expect(bufferEqual(outputBuffer, expectedOutputBuffer)).toBe(true);
