@@ -41,15 +41,19 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
         Key: srcKey
       });
 
-      var pdfStream = request.createReadStream();
+      try {
+        var pdfStream = request.createReadStream();
+      } catch (e) {
+        return next(e);
+      }
       tmp.file(function(err, path){
         if (err) {
           next(err);
           return;
         }
 
-        makePdfThumbnail.fromStreamToFile(pdfStream, path, resolution, function(pdfError, tmpfilename) {
-          if (pdfError) {
+        makePdfThumbnail.fromStreamToFile(pdfStream, path, resolution, function(err, tmpfilename) {
+          if (err) {
             next(err);
             return;
           }
@@ -67,7 +71,7 @@ function generateThumbnail (s3, resolution, srcBucket, srcKey, dstBucket, dstKey
           ContentType: contentType
         },
         next);
-      }
+    }
   ], callback);
 }
 
@@ -177,13 +181,18 @@ S3EventHandler.prototype.handler = function(event, context) {
       };
     }
 
+    function getFileBase(srcKey) {
+      var filePath = (path.dirname(srcKey) == "." ? "" : path.dirname(srcKey) + "/");
+      return filePath + path.basename(srcKey, '.pdf');
+    }
+
     if (!isNaN(resolution)) {
-      work.push(createWork(resolution, path.basename(srcKey, '.pdf') + '-thumbnail.png'));
+      work.push(createWork(resolution, getFileBase(srcKey) + '-thumbnail.png'));
     }
     else if (resolution !== null && typeof resolution === 'object') {
       for (var key in resolution) {
         if (resolution.hasOwnProperty(key)) {
-          var dstKey = path.basename(srcKey, '.pdf') + key + '.png';
+          var dstKey = getFileBase(srcKey) + key + '.png';
           work.push(createWork(resolution[key], dstKey));
         }
       }

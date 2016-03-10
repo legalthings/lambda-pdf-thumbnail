@@ -16,21 +16,18 @@
   var dynaliteServer = dynalite({path: dynaliteFolder, createTableMs: 0});
   var s3rver = new S3rver();
 
-  var INPUT_BUFFER = fs.readFileSync('test.pdf');
-  var EXPECTED_OUTPUT_HIGH = fs.readFileSync('expected-high.png');
-  var EXPECTED_OUTPUT_MEDIUM = fs.readFileSync('expected-medium.png');
-  var EXPECTED_OUTPUT_SMALL = fs.readFileSync('expected-low.png');
+  var INPUT_BUFFER = fs.readFileSync('test/pdf/test.pdf');
 
   var EVENT_DATA = require('./test-event.json');
   var TABLE_NAME = 'pdf-thumbnail-bucket-mappings';
   var INPUT_BUCKET_NAME = 'input-bucket';
   var OUT_PUTBUCKET_NAME = 'output-bucket';
   var INPUT_KEY = 'test.pdf';
+  var SUBDIR_INPUT_KEY = 'test/test.pdf';
   var OUTPUT_KEY = 'test-thumbnail.png';
   var VERIFIER_DATA = [{
     s3Bucket: OUT_PUTBUCKET_NAME,
-    s3Key: OUTPUT_KEY,
-    expectedOutputBuffer: EXPECTED_OUTPUT_HIGH
+    s3Key: OUTPUT_KEY
   }];
 
   function setupS3rver(callback) {
@@ -134,13 +131,19 @@
       function putTestFile(s3, next) {
         var params = {Bucket: INPUT_BUCKET_NAME, Key: INPUT_KEY, Body: INPUT_BUFFER};
         s3.putObject(params, function(err) {
+          next(err, s3);
+        });
+      },
+      function putTestFileSubDir(s3, next) {
+        var params = {Bucket: INPUT_BUCKET_NAME, Key: SUBDIR_INPUT_KEY, Body: INPUT_BUFFER};
+        s3.putObject(params, function(err) {
           next(err, s3, dynamodb);
         });
       }
     ], callback);
   }
 
-  function thumbnailVerifierHelper (s3, bucketname, key, expectedOutputBuffer) {
+  function thumbnailVerifierHelper (s3, bucketname, key) {
     return function (callback) {
       s3.getObject(
         {Bucket: bucketname, Key: key},
@@ -150,7 +153,7 @@
             return;
           }
 
-          callback(null, bufferEqual(response.Body, expectedOutputBuffer));
+          callback(null, (response.Body.length > 0 && response.ContentType === 'image/png') );
         }
       );
     };
@@ -163,8 +166,7 @@
       work.push(thumbnailVerifierHelper(
         s3,
         element.s3Bucket,
-        element.s3Key,
-        element.expectedOutputBuffer
+        element.s3Key
       ));
     });
 
@@ -278,22 +280,38 @@
         s3EventHandler.handler(EVENT_DATA, verifierContext);
       });
 
+      it('without specified output-bucket should save a thumbnail', function(done){
+        var verifierData = [{
+          s3Bucket: OUT_PUTBUCKET_NAME,
+          s3Key: OUTPUT_KEY
+        }];
+        var verifierContext = makeLambdaContext(VERIFIER_DATA, mockS3, expect, done);
+        var s3EventHandler = new lambdaPdfThumbnail.S3EventHandler({
+          region:'eu-west-1',
+          outputBucketName:'output-bucket',
+          s3: mockS3
+        });
+
+        var eventData = JSON.parse(JSON.stringify(EVENT_DATA));
+        eventData.Records[0].s3.object.key = 'test/test.pdf';
+        expect(s3EventHandler.outputBucketName).toBeDefined();
+        expect(s3EventHandler.tableName).not.toBeDefined();
+        s3EventHandler.handler(eventData, verifierContext);
+      });
+
       it('with specified output-bucket and multiple resolution should save mutliple thumbnails', function(done){
         var verifierData = [
           {
             s3Bucket: OUT_PUTBUCKET_NAME,
-            s3Key: 'test-high.png',
-            expectedOutputBuffer: EXPECTED_OUTPUT_HIGH
+            s3Key: 'test-high.png'
           },
           {
             s3Bucket: OUT_PUTBUCKET_NAME,
-            s3Key: 'test-medium.png',
-            expectedOutputBuffer: EXPECTED_OUTPUT_MEDIUM
+            s3Key: 'test-medium.png'
           },
           {
             s3Bucket: OUT_PUTBUCKET_NAME,
-            s3Key: 'test-low.png',
-            expectedOutputBuffer: EXPECTED_OUTPUT_SMALL
+            s3Key: 'test-low.png'
           }
         ];
         var context = makeLambdaContext(verifierData, mockS3, expect, done);
